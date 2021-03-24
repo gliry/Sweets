@@ -6,8 +6,8 @@ from ast import literal_eval
 
 
 class Courier(models.Model):
-    courier_id = models.PositiveIntegerField(verbose_name='courier_id', db_index=True, unique=True)
-    courier_type = models.CharField(verbose_name='courier_type', max_length=10)
-    regions = ArrayField(models.IntegerField(), blank=True, null=True)
-    working_hours = ArrayField(models.CharField(verbose_name='working_hours', max_length=128))
+    courier_id = models.PositiveIntegerField(unique=True)
+    courier_type = models.CharField(max_length=10, blank=True)
+    regions = ArrayField(models.IntegerField(blank=True, null=True), blank=True, null=True)
+    working_hours = ArrayField(models.CharField(max_length=128, blank=True, null=True), blank=True, null=True)
 
