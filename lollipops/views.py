@@ -32,7 +32,6 @@ class CourierCreateView(generics.CreateAPIView):
                 not_error = False
             del ser.data[i]['courier_type']
             del ser.data[i]['working_hours']
-            del ser.data[i]['id']
             del ser.data[i]['regions']
             ser.data[i]['id'] = ser.data[i].pop('courier_id')
 
@@ -61,3 +60,20 @@ class CourierListView(generics.ListAPIView):
 class CourierDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = CourierDetailSerializer
     queryset = Courier.objects.all()
+
+
+    def patch(self, request, pk):
+        not_error = True
+        courier_object = self.get_object()
+        serializer = CourierDetailSerializer(courier_object, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+        keys = request.data.keys()
+        for key in keys:
+            if request.data[key] == '' or request.data[key] == [] or request.data[key] is None:
+                not_error = False
+
+        if not_error:
+            return JsonResponse(status=201, data=serializer.data)
+        else:
+            return Response(status=400)
