@@ -161,7 +161,7 @@ class OrderCreateView(generics.CreateAPIView):
 
 
 class OrderAssignView(generics.CreateAPIView):
-    serializer_class = CourierAssignSerializer
+    serializer_class = OrderAssignSerializer
     queryset = Order.objects.all()
 
     def post(self, request, *args, **kwargs):
@@ -217,7 +217,7 @@ class OrderAssignView(generics.CreateAPIView):
         for elem in list_of_issued_orders:
             list_of_issued_ids.append({"id": elem})
         time = datetime.datetime.now()
-        if list_of_issued_orders != []:
+        if list_of_issued_orders:
             data = {
                 "orders": list_of_issued_orders,
                 "assign_time": str(time) + "Z"
@@ -227,4 +227,19 @@ class OrderAssignView(generics.CreateAPIView):
                 "orders": list_of_issued_orders
             }
 
+        return Response(data=data)
+
+
+class OrderCompleteView(generics.CreateAPIView):
+    serializer_class = OrderAssignSerializer
+    queryset = Order.objects.all()
+
+    def post(self, request, *args, **kwargs):
+        courier_id = request.data['courier_id']
+        order_id = request.data['order_id']
+        complete_time = datetime.datetime.now()
+
+        data = {
+            "order_id": order_id
+        }
         return Response(data=data)
