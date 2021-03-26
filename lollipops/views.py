@@ -1,11 +1,13 @@
+from xmlrpc.client import DateTime
+
 from rest_framework import generics
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, JsonResponse
-
 from lollipops.models import Courier, Order
 from lollipops.serializers import CourierDetailSerializer, CourierListSerializer, OrderDetailSerializer, \
-    OrderAssignSerializer, OrderListSerializer
+    CourierAssignSerializer, OrderListSerializer, OrderAssignSerializer
+import datetime
 
 
 class CourierCreateView(generics.CreateAPIView):
@@ -53,6 +55,7 @@ class CourierCreateView(generics.CreateAPIView):
                 "couriers": ser_error
             }
         }
+
         if not_error:
             return Response(added_couriers, status=201)
         else:
@@ -73,7 +76,7 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
     serializer_class = CourierDetailSerializer
     queryset = Courier.objects.all()
 
-    def patch(self, request):
+    def patch(self, request, pk):
         not_error = True
         courier_object = self.get_object()
         serializer = CourierDetailSerializer(courier_object, data=request.data, partial=True)
@@ -117,7 +120,7 @@ class OrderCreateView(generics.CreateAPIView):
         ser.save()
 
         for i in range(len(ser.data)):
-            if ser.data[i]['order_id'] is None:
+            if ser.data[i]['weight'] > 50 or ser.data[i]['weight'] < 0.01:
                 list_of_error_id.append(i)
                 not_error = False
             elif ser.data[i]['weight'] is None:
@@ -158,11 +161,70 @@ class OrderCreateView(generics.CreateAPIView):
 
 
 class OrderAssignView(generics.CreateAPIView):
-    serializer_class = OrderAssignSerializer
+    serializer_class = CourierAssignSerializer
     queryset = Order.objects.all()
 
     def post(self, request, *args, **kwargs):
+        list_of_issued_orders = []
+        list_of_issued_ids = []
         courier_id = request.data['courier_id']
         courier = get_object_or_404(Courier, pk=courier_id)
-        data = OrderAssignSerializer(courier).data
+        courier_data = CourierAssignSerializer(courier).data
+
+        order_data = list(Order.objects.all())
+
+        courier_working_hours = courier_data['working_hours']
+        courier_regions = courier_data['regions']
+        courier_type = courier_data['courier_type']
+        if courier_type == 'foot':
+            courier_weight = 10
+        elif courier_type == 'bike':
+            courier_weight = 15
+        elif courier_type == 'car':
+            courier_weight = 50
+        orders_weight = 0
+        control_weight_error = True
+        counter = 0
+        while control_weight_error:
+            for order in order_data:
+                counter += 1
+                order_weight = order.weight
+                order_region = order.region
+                order_hours = order.delivery_hours
+                order_id = order.order_id
+
+                if order_region in courier_regions:
+                    for i in range(len(order_hours)):
+                        for j in range(len(courier_working_hours)):
+                            if datetime.datetime.strptime(courier_working_hours[j].split('-')[0], '%H:%M') \
+                                    < datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
+                                    < datetime.datetime.strptime(courier_working_hours[j].split('-')[1], '%H:%M') \
+                                    or datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
+                                    < datetime.datetime.strptime(courier_working_hours[j].split('-')[0], '%H:%M') \
+                                    < datetime.datetime.strptime(order_hours[i].split('-')[1], '%H:%M'):
+
+                                orders_weight += order_weight
+                                if orders_weight <= courier_weight:
+                                    list_of_issued_orders.append(order_id)
+                                    order_data.remove(order)
+                                else:
+                                    control_weight_error = False
+                if counter > len(order_data):
+                    control_weight_error = False
+
+        print(set(list_of_issued_orders))
+        print(orders_weight)
+        for elem in list_of_issued_orders:
+            list_of_issued_ids.append({"id": elem})
+        time = datetime.datetime.now()
+        if list_of_issued_orders != []:
+            data = {
+                "orders": list_of_issued_orders,
+                "assign_time": str(time) + "Z"
+            }
+        else:
+            data = {
+                "orders": list_of_issued_orders
+            }
+
         return Response(data=data)

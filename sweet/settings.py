@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'lollipops',
+    'rest_framework_swagger'
 ]
 
 MIDDLEWARE = [

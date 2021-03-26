@@ -20,6 +20,11 @@ class CourierDetailSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class CourierAssignSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Courier
+        fields = '__all__'
+
 class OrderAssignSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
