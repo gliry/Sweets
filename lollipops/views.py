@@ -197,29 +197,30 @@ class OrderAssignView(generics.CreateAPIView):
                     for i in range(len(order_hours)):
                         for j in range(len(courier_working_hours)):
                             if datetime.datetime.strptime(courier_working_hours[j].split('-')[0], '%H:%M') \
-                                    < datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
+                                    <= datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
                                     < datetime.datetime.strptime(courier_working_hours[j].split('-')[1], '%H:%M') \
                                     or datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
-                                    < datetime.datetime.strptime(courier_working_hours[j].split('-')[0], '%H:%M') \
+                                    <= datetime.datetime.strptime(courier_working_hours[j].split('-')[0], '%H:%M') \
                                     < datetime.datetime.strptime(order_hours[i].split('-')[1], '%H:%M'):
 
-                                orders_weight += order_weight
                                 if orders_weight <= courier_weight:
-                                    list_of_issued_orders.append(order_id)
-                                    order_data.remove(order)
+                                    if order in order_data:
+                                        order_data.remove(order)
+                                        orders_weight += order_weight
+                                        list_of_issued_orders.append(order_id)
                                 else:
                                     control_weight_error = False
                 if counter > len(order_data):
                     control_weight_error = False
 
-        print(set(list_of_issued_orders))
+        print(list_of_issued_orders)
         print(orders_weight)
         for elem in list_of_issued_orders:
             list_of_issued_ids.append({"id": elem})
         time = datetime.datetime.now()
         if list_of_issued_orders:
             data = {
-                "orders": list_of_issued_orders,
+                "orders": list_of_issued_ids,
                 "assign_time": str(time) + "Z"
             }
         else:

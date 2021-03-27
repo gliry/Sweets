@@ -16,5 +16,3 @@ class Order(models.Model):
     weight = models.FloatField(blank=True, null=True)
     region = models.IntegerField(blank=True, null=True)
     delivery_hours = ArrayField(models.CharField(max_length=128, blank=True, null=True), blank=True, null=True)
-
-
