@@ -11,6 +11,7 @@ class Courier(models.Model):
     working_hours = ArrayField(models.CharField(max_length=128, blank=True, null=True), blank=True, null=True)
     rating = models.PositiveSmallIntegerField(blank=True, null=True, default=0)
     earnings = models.PositiveSmallIntegerField(blank=True, null=True, default=0)
+    order_id_delivery = ArrayField(models.IntegerField(blank=True, null=True), blank=True, null=True)
 
 
 

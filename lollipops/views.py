@@ -40,6 +40,7 @@ class CourierCreateView(generics.CreateAPIView):
             del ser.data[i]['regions']
             del ser.data[i]['rating']
             del ser.data[i]['earnings']
+            del ser.data[i]['order_id_delivery']
             ser.data[i]['id'] = ser.data[i].pop('courier_id')
 
         for elem in list_of_error_id:
@@ -88,6 +89,11 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
         for key in keys:
             if request.data[key] == '' or request.data[key] == [] or request.data[key] is None:
                 not_error = False
+        if Courier.objects.filter(courier_id=pk):
+            courier_id = pk
+            courier_type = Courier.objects.filter(courier_id=pk).courier_type
+            regions = Courier.objects.filter(courier_id=pk).regions
+            working_hours = Courier.objects.filter(courier_id=pk).working_hours
 
         if not_error:
             return JsonResponse(status=201, data=serializer.data)
@@ -174,75 +180,87 @@ class OrderAssignView(generics.CreateAPIView):
         list_of_issued_orders = []
         list_of_issued_ids = []
         courier_id = request.data['courier_id']
-        courier = get_object_or_404(Courier, pk=courier_id)
-        courier_data = CourierAssignSerializer(courier).data
+        if Courier.objects.filter(courier_id=courier_id):
+            courier = get_object_or_404(Courier, pk=courier_id)
+            courier_data = CourierAssignSerializer(courier).data
 
-        order_data = list(Order.objects.all())
+            order_data = list(Order.objects.all())
 
-        courier_working_hours = courier_data['working_hours']
-        courier_regions = courier_data['regions']
-        courier_type = courier_data['courier_type']
-        if courier_type == 'foot':
-            courier_weight = 10
-        elif courier_type == 'bike':
-            courier_weight = 15
-        elif courier_type == 'car':
-            courier_weight = 50
-        orders_weight = 0
-        control_weight_error = True
-        counter = 0
-        while control_weight_error:
-            for order in order_data:
-                counter += 1
-                order_weight = order.weight
-                order_region = order.region
-                order_hours = order.delivery_hours
-                order_id = order.order_id
-                order_status = order.status
+            courier_working_hours = courier_data['working_hours']
+            courier_regions = courier_data['regions']
+            courier_type = courier_data['courier_type']
+            if courier_type == 'foot':
+                courier_weight = 10
+            elif courier_type == 'bike':
+                courier_weight = 15
+            elif courier_type == 'car':
+                courier_weight = 50
+            orders_weight = 0
+            control_weight_error = True
+            counter = 0
+            while control_weight_error:
 
-                if order_status == 'In processing' or order_status == 'At courier':
-                    if order_region in courier_regions:
-                        for i in range(len(order_hours)):
-                            for j in range(len(courier_working_hours)):
-                                if datetime.datetime.strptime(courier_working_hours[j].split('-')[0], '%H:%M') \
-                                        <= datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
-                                        < datetime.datetime.strptime(courier_working_hours[j].split('-')[1], '%H:%M') \
-                                        or datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
-                                        <= datetime.datetime.strptime(courier_working_hours[j].split('-')[0], '%H:%M') \
-                                        < datetime.datetime.strptime(order_hours[i].split('-')[1], '%H:%M'):
+                for order in order_data:
 
-                                    if orders_weight <= courier_weight:
-                                        if order in order_data:
-                                            order_data.remove(order)
-                                            orders_weight += order_weight
-                                            list_of_issued_orders.append(order_id)
-                                    else:
-                                        control_weight_error = False
-                if counter > len(order_data):
+                    counter += 1
+                    order_weight = order.weight
+                    order_region = order.region
+                    order_hours = order.delivery_hours
+                    order_id = order.order_id
+                    order_status = order.status
+
+                    if order_status == 'In processing' or order_status == 'At courier':
+                        if order_region in courier_regions:
+                            for i in range(len(order_hours)):
+                                for j in range(len(courier_working_hours)):
+                                    if datetime.datetime.strptime(courier_working_hours[j].split('-')[0], '%H:%M') \
+                                            <= datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
+                                            < datetime.datetime.strptime(courier_working_hours[j].split('-')[1],
+                                                                         '%H:%M') \
+                                            or datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
+                                            <= datetime.datetime.strptime(courier_working_hours[j].split('-')[0],
+                                                                          '%H:%M') \
+                                            < datetime.datetime.strptime(order_hours[i].split('-')[1], '%H:%M'):
+                                        orders_weight += order_weight
+
+                                        if orders_weight <= courier_weight:
+
+                                            if order in order_data:
+                                                order_data.remove(order)
+
+                                                list_of_issued_orders.append(order_id)
+
+                                        else:
+                                            control_weight_error = False
+                if len(order_data) == 0:
                     control_weight_error = False
 
-        time = datetime.datetime.now().isoformat()
-        for elem in list_of_issued_orders:
-            list_of_issued_ids.append({"id": elem})
+            time = datetime.datetime.now().isoformat()
+            for elem in list_of_issued_orders:
+                list_of_issued_ids.append({"id": elem})
 
-            if Order.objects.filter(order_id=elem)[0].status == 'In processing':
-                Order.objects.filter(order_id=elem).update(status='At courier', assign_time=f'{time}Z',
-                                                           courier_id_delivery=courier_id)
-            elif Order.objects.filter(order_id=elem)[0].status == 'Completed':
-                if elem in list_of_issued_ids:
-                    list_of_issued_orders.remove(elem)
+                if Order.objects.filter(order_id=elem)[0].status == 'In processing':
+                    Order.objects.filter(order_id=elem).update(status='At courier', assign_time=f'{time}Z',
+                                                               courier_id_delivery=courier_id)
 
-        if list_of_issued_orders:
-            data = {
-                "orders": list_of_issued_ids,
-                "assign_time": str(time)
-            }
+                elif Order.objects.filter(order_id=elem)[0].status == 'Completed':
+                    if elem in list_of_issued_ids:
+                        list_of_issued_orders.remove(elem)
+            Courier.objects.filter(courier_id=courier_id).update(order_id_delivery=list_of_issued_orders)
+
+            if list_of_issued_orders:
+                data = {
+                    "orders": list_of_issued_ids,
+                    "assign_time": str(time)
+                }
+            else:
+                data = {
+                    "orders": list_of_issued_orders
+                }
+
+            return Response(data=data, status=200)
         else:
-            data = {
-                "orders": list_of_issued_orders
-            }
-
-        return Response(data=data)
+            return Response(status=400)
 
 
 class OrderCompleteView(generics.CreateAPIView):
@@ -255,7 +273,6 @@ class OrderCompleteView(generics.CreateAPIView):
         complete_time = request.data['complete_time']
         if Order.objects.filter(order_id=order_id):
             if Order.objects.filter(courier_id_delivery=courier_id):
-
                 Order.objects.filter(order_id=order_id).update(status='Completed', complete_time=f'{complete_time}')
                 data = {
                     "order_id": order_id
