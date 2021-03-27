@@ -9,6 +9,9 @@ class Courier(models.Model):
     courier_type = models.CharField(max_length=10, blank=True)
     regions = ArrayField(models.IntegerField(blank=True, null=True), blank=True, null=True)
     working_hours = ArrayField(models.CharField(max_length=128, blank=True, null=True), blank=True, null=True)
+    rating = models.PositiveSmallIntegerField(blank=True, null=True, default=0)
+    earnings = models.PositiveSmallIntegerField(blank=True, null=True, default=0)
+
 
 
 class Order(models.Model):
@@ -16,3 +19,6 @@ class Order(models.Model):
     weight = models.FloatField(blank=True, null=True)
     region = models.IntegerField(blank=True, null=True)
     delivery_hours = ArrayField(models.CharField(max_length=128, blank=True, null=True), blank=True, null=True)
+    status = models.CharField(max_length=30, blank=True, default='In processing')
+    assign_time = models.CharField(max_length=50, blank=True, default='')
+    complete_time = models.CharField(max_length=50, blank=True, default='')
