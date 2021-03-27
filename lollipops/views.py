@@ -142,6 +142,7 @@ class OrderCreateView(generics.CreateAPIView):
             del ser.data[i]['status']
             del ser.data[i]['assign_time']
             del ser.data[i]['complete_time']
+            del ser.data[i]['courier_id_delivery']
             ser.data[i]['id'] = ser.data[i].pop('order_id')
 
         for elem in list_of_error_id:
@@ -199,7 +200,7 @@ class OrderAssignView(generics.CreateAPIView):
                 order_id = order.order_id
                 order_status = order.status
 
-                if order_status == 'In processing':
+                if order_status == 'In processing' or order_status == 'At courier':
                     if order_region in courier_regions:
                         for i in range(len(order_hours)):
                             for j in range(len(courier_working_hours)):
@@ -223,9 +224,13 @@ class OrderAssignView(generics.CreateAPIView):
         time = datetime.datetime.now().isoformat()
         for elem in list_of_issued_orders:
             list_of_issued_ids.append({"id": elem})
-            Order.objects.filter(order_id=elem).update(status='At courier', assign_time=f'{time}Z')
 
-
+            if Order.objects.filter(order_id=elem)[0].status == 'In processing':
+                Order.objects.filter(order_id=elem).update(status='At courier', assign_time=f'{time}Z',
+                                                           courier_id_delivery=courier_id)
+            elif Order.objects.filter(order_id=elem)[0].status == 'Completed':
+                if elem in list_of_issued_ids:
+                    list_of_issued_orders.remove(elem)
 
         if list_of_issued_orders:
             data = {
@@ -248,9 +253,13 @@ class OrderCompleteView(generics.CreateAPIView):
         courier_id = request.data['courier_id']
         order_id = request.data['order_id']
         complete_time = request.data['complete_time']
-        Order.objects.filter(order_id=order_id).update(status='Completed', complete_time=f'{complete_time}')
+        if Order.objects.filter(order_id=order_id):
+            if Order.objects.filter(courier_id_delivery=courier_id):
 
-        data = {
-            "order_id": order_id
-        }
-        return Response(data=data)
+                Order.objects.filter(order_id=order_id).update(status='Completed', complete_time=f'{complete_time}')
+                data = {
+                    "order_id": order_id
+                }
+                return Response(data=data, status=200)
+        else:
+            return Response(status=400)

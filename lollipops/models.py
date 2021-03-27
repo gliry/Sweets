@@ -22,3 +22,4 @@ class Order(models.Model):
     status = models.CharField(max_length=30, blank=True, default='In processing')
     assign_time = models.CharField(max_length=50, blank=True, default='')
     complete_time = models.CharField(max_length=50, blank=True, default='')
+    courier_id_delivery = models.IntegerField(blank=True, default=-1)
