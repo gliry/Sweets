@@ -91,9 +91,69 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
                 not_error = False
         if Courier.objects.filter(courier_id=pk):
             courier_id = pk
-            courier_type = Courier.objects.filter(courier_id=pk).courier_type
-            regions = Courier.objects.filter(courier_id=pk).regions
-            working_hours = Courier.objects.filter(courier_id=pk).working_hours
+            courier_type = Courier.objects.filter(courier_id=pk)[0].courier_type
+            regions = Courier.objects.filter(courier_id=pk)[0].regions
+            working_hours = Courier.objects.filter(courier_id=pk)[0].working_hours
+            order_id_delivery = Courier.objects.filter(courier_id=pk)[0].order_id_delivery
+
+
+            list_of_issued_orders = []
+            list_of_issued_ids = []
+
+
+            courier = Courier.objects.filter(courier_id=pk)[0]
+            courier_data = CourierAssignSerializer(courier).data
+
+            order_data = list(Order.objects.all())
+
+            courier_working_hours = courier_data['working_hours']
+            courier_regions = courier_data['regions']
+            courier_type = courier_data['courier_type']
+            if courier_type == 'foot':
+                courier_weight = 10
+            elif courier_type == 'bike':
+                courier_weight = 15
+            elif courier_type == 'car':
+                courier_weight = 50
+            orders_weight = 0
+            control_weight_error = True
+            counter = 0
+            while control_weight_error:
+                for order in order_data:
+                    counter += 1
+                    order_weight = order.weight
+                    order_region = order.region
+                    order_hours = order.delivery_hours
+                    order_id = order.order_id
+                    order_status = order.status
+
+                    if order_status == 'In processing' or order_status == 'At courier':
+                        if order_region in courier_regions:
+                            for i in range(len(order_hours)):
+                                for j in range(len(courier_working_hours)):
+                                    if datetime.datetime.strptime(courier_working_hours[j].split('-')[0], '%H:%M') \
+                                            <= datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
+                                            < datetime.datetime.strptime(courier_working_hours[j].split('-')[1],
+                                                                         '%H:%M') \
+                                            or datetime.datetime.strptime(order_hours[i].split('-')[0], '%H:%M') \
+                                            <= datetime.datetime.strptime(courier_working_hours[j].split('-')[0],
+                                                                          '%H:%M') \
+                                            < datetime.datetime.strptime(order_hours[i].split('-')[1], '%H:%M'):
+
+                                        if order in order_data:
+                                            order_data.remove(order)
+                                            if orders_weight + order_weight <= courier_weight:
+                                                orders_weight += order_weight
+                                                list_of_issued_orders.append(order_id)
+
+                if len(order_data) == 0:
+                    control_weight_error = False
+        Courier.objects.filter(courier_id=pk).update(order_id_delivery=list_of_issued_orders)
+
+        difference = [x for x in order_id_delivery if x not in list_of_issued_orders]
+        print(difference)
+        for order_id in difference:
+            Order.objects.filter(order_id=order_id).update(courier_id_delivery=-1, status='In processing')
 
         if not_error:
             return JsonResponse(status=201, data=serializer.data)
