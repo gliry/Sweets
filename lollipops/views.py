@@ -335,7 +335,7 @@ class OrderCompleteView(generics.CreateAPIView):
         courier_id = request.data['courier_id']
         order_id = request.data['order_id']
         complete_time = request.data['complete_time']
-        if Order.objects.filter(order_id=order_id):
+        if Order.objects.filter(order_id=order_id) and Courier.objects.filter(courier_id=courier_id):
             if Order.objects.filter(courier_id_delivery=courier_id):
                 Order.objects.filter(order_id=order_id).update(status='Completed', complete_time=f'{complete_time}')
                 data = {
