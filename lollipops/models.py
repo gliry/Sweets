@@ -1,7 +1,5 @@
-from django.db import models
 from django.contrib.postgres.fields import ArrayField
-from django.contrib.auth import get_user_model
-from ast import literal_eval
+from django.db import models
 
 
 class Courier(models.Model):
@@ -12,7 +10,6 @@ class Courier(models.Model):
     rating = models.PositiveSmallIntegerField(blank=True, null=True, default=0)
     earnings = models.PositiveSmallIntegerField(blank=True, null=True, default=0)
     order_id_delivery = ArrayField(models.IntegerField(blank=True, null=True), blank=True, null=True)
-
 
 
 class Order(models.Model):

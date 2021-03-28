@@ -1,7 +1,7 @@
-from django.urls import path, include
-from lollipops.views import *
+from django.urls import path
 from rest_framework.routers import SimpleRouter
 
+from lollipops.views import *
 
 
 class OptionalSlashRouter(SimpleRouter):
