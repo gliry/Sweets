@@ -28,13 +28,13 @@ class CourierCreateView(generics.CreateAPIView):
         ser_error_list_dict = []
         not_error = True  # Error flag
 
-        "Getting serialazer of request"
+        # Getting serializer of request
         ser = self.get_serializer(data=request.data["data"], many=True)
         ser.is_valid(raise_exception=True)
         ser.save()
 
         for i in range(len(ser.data)):
-            "Checking wrong params in request"
+            # Checking wrong params in request
             if ser.data[i]['courier_type'] == '':
                 list_of_error_id.append(i)
                 not_error = False
@@ -46,7 +46,7 @@ class CourierCreateView(generics.CreateAPIView):
                 list_of_error_id.append(i)
                 not_error = False
 
-            "Delete parameters that do not need to be output, rename courier_id to id, only for output"
+            # Delete parameters that do not need to be output, rename courier_id to id, only for output
             del ser.data[i]['courier_type']
             del ser.data[i]['working_hours']
             del ser.data[i]['regions']
@@ -55,16 +55,16 @@ class CourierCreateView(generics.CreateAPIView):
             del ser.data[i]['order_id_delivery']
             ser.data[i]['id'] = ser.data[i].pop('courier_id')
 
-        "preparing data for output"
+        # preparing data for output
         for elem in list_of_error_id:
             ser_error.append(ser.data[elem])
             ser_error_list_dict.append(ser.data[elem]['id'])
 
-        "delete accepted courier if it has invalid values"
+        # delete accepted courier if it has invalid values
         for elem in ser_error_list_dict:
             Courier.objects.filter(courier_id=elem).delete()
 
-        "output data describe"
+        # output data describe
         added_couriers = {
             "couriers": ser.data
         }
@@ -74,7 +74,7 @@ class CourierCreateView(generics.CreateAPIView):
             }
         }
 
-        "return data with right status"
+        # return data with right status
         if not_error:
             return Response(added_couriers, status=201)
         else:
@@ -110,13 +110,13 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
         control_weight_error = True  # error flag
         counter = 0
 
-        "Getting serializer of request"
+        # Getting serializer of request
         courier_object = self.get_object()
         serializer = CourierDetailSerializer(courier_object, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
 
-        "Checking wrong params in request"
+        # Checking wrong params in request
         keys = request.data.keys()
         for key in keys:
             if request.data[key] == '' or request.data[key] == [] or request.data[key] is None:
@@ -128,7 +128,7 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
             order_data = list(Order.objects.all())
             length = len(order_data)
 
-            "creating serializer data, parse it"
+            # creating serializer data, parse it
             courier = Courier.objects.filter(courier_id=pk)[0]
             courier_data = CourierAssignSerializer(courier).data
             courier_working_hours = courier_data['working_hours']
@@ -146,14 +146,14 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
                 for order in order_data:
                     counter += 1  # for interrupting loop
 
-                    "parse order data"
+                    # parse order data
                     order_weight = order.weight
                     order_region = order.region
                     order_hours = order.delivery_hours
                     order_id = order.order_id
                     order_status = order.status
 
-                    "checking  order status, conformity regions and time"
+                    # checking  order status, conformity regions and time
                     if order_status == 'In processing' or order_status == 'At courier':
                         if order_region in courier_regions:
                             for i in range(len(order_hours)):
@@ -167,38 +167,38 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
                                                                           '%H:%M') \
                                             < datetime.datetime.strptime(order_hours[i].split('-')[1], '%H:%M'):
 
-                                        "removing iter-object if it fit at least one criterion"
+                                        # removing iter-object if it fit at least one criterion
                                         if order in order_data:
                                             order_data.remove(order)
 
-                                            "check weight overflow"
+                                            # check weight overflow
                                             if orders_weight + order_weight <= courier_weight:
                                                 orders_weight += order_weight
                                                 list_of_issued_orders.append(order_id)
-                    "break mechanism"
+                    # break mechanism
                     if len(order_data) == 0:
                         control_weight_error = False
-                "break mechanism"
+                # break mechanism
                 if counter > length:
                     control_weight_error = False
 
-        "when couriers parameters change, check difference in field order_id_delivery "
-        "with new field list_of_issued_orders, create list of different ids"
+        # when couriers parameters change, check difference in field order_id_delivery
+        # with new field list_of_issued_orders, create list of different ids
         if order_id_delivery:
             difference = [x for x in order_id_delivery if x not in list_of_issued_orders]
 
-            "For defference beetwen lists withdraw order, preparing right list_of_issued_orders"
+            # For difference beetwen lists withdraw order, preparing right list_of_issued_orders
             for order_id in difference:
                 Order.objects.filter(order_id=order_id).update(courier_id_delivery=-1, status='In processing',
                                                                assign_time='')
                 if order_id in list_of_issued_orders:
                     list_of_issued_orders.remove(order_id)
 
-        "changing data in order_id_delivery of order"
+        # changing data in order_id_delivery of order
         if list_of_issued_orders:
             Courier.objects.filter(courier_id=pk).update(order_id_delivery=list_of_issued_orders)
 
-        "return data with right status"
+        # return data with right status
         if not_error:
             return JsonResponse(status=201, data=serializer.data)
         else:
@@ -217,19 +217,19 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
         rate = 0  # Need to fix by writing formula
         earn = 0  # Need to fix by writing formula
 
-        "creating serializer data"
+        # creating serializer data
         courier_object = self.get_object()
         serializer = CourierDetailSerializer(courier_object, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
 
-        "Updating data"
+        # Updating data
         value = serializer.data
         value.update({'rating': rate})
         value.update({'earnings': earn})
         Courier.objects.filter(courier_id=pk).update(rating=rate, earnings=earn)
 
-        "return data"
+        # return data
         return Response(data=value)
 
 
@@ -251,13 +251,13 @@ class OrderCreateView(generics.CreateAPIView):
         ser_error_list = []
         not_error = True
 
-        "creating serializer data"
+        # creating serializer data
         ser = self.get_serializer(data=request.data["data"], many=True)
         ser.is_valid(raise_exception=True)
         ser.save()
 
         for i in range(len(ser.data)):
-            "Checking wrong params in request"
+            # Checking wrong params in request
             if ser.data[i]['weight'] > 50 or ser.data[i]['weight'] < 0.01:
                 list_of_error_id.append(i)
                 not_error = False
@@ -272,7 +272,7 @@ class OrderCreateView(generics.CreateAPIView):
                 list_of_error_id.append(i)
                 not_error = False
 
-            "Delete parameters that do not need to be output, rename order_id to id, only for output"
+            # Delete parameters that do not need to be output, rename order_id to id, only for output
             del ser.data[i]['weight']
             del ser.data[i]['region']
             del ser.data[i]['delivery_hours']
@@ -282,16 +282,16 @@ class OrderCreateView(generics.CreateAPIView):
             del ser.data[i]['courier_id_delivery']
             ser.data[i]['id'] = ser.data[i].pop('order_id')
 
-        "preparing data for output"
+        # preparing data for output
         for elem in list_of_error_id:
             ser_error.append(ser.data[elem])
             ser_error_list.append(ser.data[elem]['id'])
 
-        "delete accepted order if it has invalid values"
+        # delete accepted order if it has invalid values
         for elem in ser_error_list:
             Order.objects.filter(order_id=elem).delete()
 
-        "output data describe"
+        # output data describe
         added_orders = {
             "orders": ser.data
         }
@@ -301,7 +301,7 @@ class OrderCreateView(generics.CreateAPIView):
             }
         }
 
-        "return data with right status"
+        # return data with right status
         if not_error:
             return Response(added_orders, status=201)
         else:
@@ -333,7 +333,7 @@ class OrderAssignView(generics.CreateAPIView):
 
         if Courier.objects.filter(courier_id=courier_id):  # if courier with courier_id exist
 
-            "Getting object and serializer, parse data"
+            # Getting object and serializer, parse data
             courier = get_object_or_404(Courier, pk=courier_id)
             courier_data = CourierAssignSerializer(courier).data
             courier_working_hours = courier_data['working_hours']
@@ -346,7 +346,7 @@ class OrderAssignView(generics.CreateAPIView):
             elif courier_type == 'car':
                 courier_weight = 50
 
-            "represent orders data in list, save it len()"
+            # represent orders data in list, save it len()
             order_data = list(Order.objects.all())
             length = len(order_data)
 
@@ -354,14 +354,14 @@ class OrderAssignView(generics.CreateAPIView):
                 for order in order_data:
                     counter += 1  # for interrupting loop
 
-                    "parse order data"
+                    # parse order data
                     order_weight = order.weight
                     order_region = order.region
                     order_hours = order.delivery_hours
                     order_id = order.order_id
                     order_status = order.status
 
-                    "checking  order status, conformity regions and time"
+                    # checking  order status, conformity regions and time
                     if order_status == 'In processing' or order_status == 'At courier':
                         if order_region in courier_regions:
                             for i in range(len(order_hours)):
@@ -375,41 +375,41 @@ class OrderAssignView(generics.CreateAPIView):
                                                                           '%H:%M') \
                                             < datetime.datetime.strptime(order_hours[i].split('-')[1], '%H:%M'):
 
-                                        "removing iter-object if it fit at least one criterion"
+                                        # removing iter-object if it fit at least one criterion
                                         if order in order_data:
                                             order_data.remove(order)
 
-                                            "check weight overflow"
+                                            # check weight overflow
                                             if orders_weight + order_weight <= courier_weight:
                                                 orders_weight += order_weight
                                                 list_of_issued_orders.append(order_id)
-                    "break mechanism"
+                    # break mechanism
                     if len(order_data) == 0:
                         control_weight_error = False
-                "break mechanism"
+                # break mechanism
                 if counter > length:
                     control_weight_error = False
 
             time = datetime.datetime.now().isoformat()
-            "preparing data for output"
+            # preparing data for output
             for elem in list_of_issued_orders:
                 list_of_issued_ids.append({"id": elem})
 
-                "Update order status"
+                # Update order status
                 if Order.objects.filter(order_id=elem)[0].status == 'In processing':
                     Order.objects.filter(order_id=elem).update(status='At courier', assign_time=f'{time}Z',
                                                                courier_id_delivery=courier_id)
 
 
                 elif Order.objects.filter(order_id=elem)[0].status == 'Completed':
-                    "removing completed orders from list"
+                    # removing completed orders from list
                     if elem in list_of_issued_ids:
                         list_of_issued_orders.remove(elem)
 
-            "changing data in order_id_delivery of order"
+            # changing data in order_id_delivery of order
             Courier.objects.filter(courier_id=courier_id).update(order_id_delivery=list_of_issued_orders)
 
-            "preparing data for output"
+            # preparing data for output
             if list_of_issued_orders:
                 data = {
                     "orders": list_of_issued_ids,
@@ -420,7 +420,7 @@ class OrderAssignView(generics.CreateAPIView):
                     "orders": list_of_issued_orders
                 }
 
-            "return data with right status"
+            # return data with right status
             return Response(data=data, status=200)
         else:
             return Response(status=400)
@@ -441,21 +441,21 @@ class OrderCompleteView(generics.CreateAPIView):
         :return: If courier and order exists return HTTP 200 OK with {"order_id": order_id}.
         Else return HTTP 400 Bad Request
         """
-        "parse request data"
+        # parse request data
         courier_id = request.data['courier_id']
         order_id = request.data['order_id']
         complete_time = request.data['complete_time']
 
-        "Making status of order completed"
+        # Making status of order completed
         if Order.objects.filter(order_id=order_id) and Courier.objects.filter(courier_id=courier_id):
             if Order.objects.filter(courier_id_delivery=courier_id):
                 Order.objects.filter(order_id=order_id).update(status='Completed', complete_time=f'{complete_time}')
 
-                "preparing data for output"
+                # preparing data for output
                 data = {
                     "order_id": order_id
                 }
-                "return data with right status"
+                # return data with right status
                 return Response(data=data, status=200)
         else:
             return Response(status=400)
