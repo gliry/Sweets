@@ -360,9 +360,11 @@ class OrderAssignView(generics.CreateAPIView):
                     order_hours = order.delivery_hours
                     order_id = order.order_id
                     order_status = order.status
+                    courier_id_delivery = order.courier_id_delivery
 
                     # checking  order status, conformity regions and time
-                    if order_status == 'In processing' or order_status == 'At courier':
+                    if order_status == 'In processing' or (order_status == 'At courier'
+                                                           and courier_id_delivery == courier_id):
                         if order_region in courier_regions:
                             for i in range(len(order_hours)):
                                 for j in range(len(courier_working_hours)):
@@ -445,17 +447,20 @@ class OrderCompleteView(generics.CreateAPIView):
         courier_id = request.data['courier_id']
         order_id = request.data['order_id']
         complete_time = request.data['complete_time']
+        list_order_id_delivery = Courier.objects.filter(courier_id=courier_id)[0].order_id_delivery
 
         # Making status of order completed
         if Order.objects.filter(order_id=order_id) and Courier.objects.filter(courier_id=courier_id):
             if Order.objects.filter(courier_id_delivery=courier_id):
-                Order.objects.filter(order_id=order_id).update(status='Completed', complete_time=f'{complete_time}')
-
+                if order_id in list_order_id_delivery:
+                    list_order_id_delivery.remove(order_id)
+                Order.objects.filter(order_id=order_id).update(status='Completed', complete_time=f'{complete_time}',)
+                Courier.objects.filter(courier_id=courier_id).update(order_id_delivery=list_order_id_delivery)
                 # preparing data for output
                 data = {
                     "order_id": order_id
                 }
                 # return data with right status
                 return Response(data=data, status=200)
-        else:
-            return Response(status=400)
+
+        return Response(status=400)
