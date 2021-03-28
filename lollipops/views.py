@@ -96,10 +96,8 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
             working_hours = Courier.objects.filter(courier_id=pk)[0].working_hours
             order_id_delivery = Courier.objects.filter(courier_id=pk)[0].order_id_delivery
 
-
             list_of_issued_orders = []
             list_of_issued_ids = []
-
 
             courier = Courier.objects.filter(courier_id=pk)[0]
             courier_data = CourierAssignSerializer(courier).data
@@ -148,12 +146,13 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
 
                 if len(order_data) == 0:
                     control_weight_error = False
-        Courier.objects.filter(courier_id=pk).update(order_id_delivery=list_of_issued_orders)
+        if list_of_issued_orders != []:
+            Courier.objects.filter(courier_id=pk).update(order_id_delivery=list_of_issued_orders)
+        if order_id_delivery:
+            difference = [x for x in order_id_delivery if x not in list_of_issued_orders]
 
-        difference = [x for x in order_id_delivery if x not in list_of_issued_orders]
-        print(difference)
-        for order_id in difference:
-            Order.objects.filter(order_id=order_id).update(courier_id_delivery=-1, status='In processing')
+            for order_id in difference:
+                Order.objects.filter(order_id=order_id).update(courier_id_delivery=-1, status='In processing')
 
         if not_error:
             return JsonResponse(status=201, data=serializer.data)
@@ -245,6 +244,7 @@ class OrderAssignView(generics.CreateAPIView):
             courier_data = CourierAssignSerializer(courier).data
 
             order_data = list(Order.objects.all())
+            length = len(order_data)
 
             courier_working_hours = courier_data['working_hours']
             courier_regions = courier_data['regions']
@@ -271,6 +271,7 @@ class OrderAssignView(generics.CreateAPIView):
 
                     if order_status == 'In processing' or order_status == 'At courier':
                         if order_region in courier_regions:
+                            print(order_region)
                             for i in range(len(order_hours)):
                                 for j in range(len(courier_working_hours)):
                                     if datetime.datetime.strptime(courier_working_hours[j].split('-')[0], '%H:%M') \
@@ -289,10 +290,13 @@ class OrderAssignView(generics.CreateAPIView):
                                                 order_data.remove(order)
 
                                                 list_of_issued_orders.append(order_id)
+                                                print(list_of_issued_orders)
 
                                         else:
                                             control_weight_error = False
-                if len(order_data) == 0:
+                    if len(order_data) == 0:
+                        control_weight_error = False
+                if counter > length:
                     control_weight_error = False
 
             time = datetime.datetime.now().isoformat()
