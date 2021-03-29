@@ -110,6 +110,9 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
         control_weight_error = True  # error flag
         counter = 0
 
+        # for check updating of order_id_delivery is needed or not
+        last_state_type = Courier.objects.filter(courier_id=pk)[0].courier_type
+
         # Getting serializer of request
         courier_object = self.get_object()
         serializer = CourierDetailSerializer(courier_object, data=request.data, partial=True)
@@ -118,6 +121,8 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
 
         # Checking wrong params in request
         keys = request.data.keys()
+        keys = list(keys)
+        keys.remove('order_id_delivery')  # If order_id_delivery is empty it's OK
         for key in keys:
             if request.data[key] == '' or request.data[key] == [] or request.data[key] is None:
                 not_error = False
@@ -184,8 +189,12 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
 
         # when couriers parameters change, check difference in field order_id_delivery
         # with new field list_of_issued_orders, create list of different ids
+        print(order_id_delivery)
+        print(list_of_issued_orders)
         if order_id_delivery:
-            difference = [x for x in order_id_delivery if x not in list_of_issued_orders]
+            difference = [i for i in order_id_delivery + list_of_issued_orders
+                          if i not in order_id_delivery or i not in list_of_issued_orders]
+            print(difference)
 
             # For difference beetwen lists withdraw order, preparing right list_of_issued_orders
             for order_id in difference:
@@ -195,8 +204,9 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
                     list_of_issued_orders.remove(order_id)
 
         # changing data in order_id_delivery of order
-        if list_of_issued_orders:
+        if last_state_type == 'car' or (last_state_type == 'bike' and courier_type == 'foot'):
             Courier.objects.filter(courier_id=pk).update(order_id_delivery=list_of_issued_orders)
+
 
         # return data with right status
         if not_error:
