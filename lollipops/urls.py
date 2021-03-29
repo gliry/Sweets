@@ -19,8 +19,9 @@ urlpatterns = [
     path('orders/assign/', OrderAssignView.as_view()),
     path('orders/complete/', OrderCompleteView.as_view()),
 
-    path('all_couriers/', CourierListView.as_view()),
-    path('all_orders/', OrderListView.as_view()),
+    # If you need to look at all couriers and orders you may un comment out this 2 lines:
+    #path('all_couriers/', CourierListView.as_view()),
+    #path('all_orders/', OrderListView.as_view()),
 
 
 ]
