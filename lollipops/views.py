@@ -205,7 +205,6 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
         # changing data in order_id_delivery of order
         Courier.objects.filter(courier_id=pk).update(order_id_delivery=list_of_issued_orders)
 
-
         # return data with right status
         if not_error:
             return JsonResponse(status=201, data=serializer.data)
@@ -227,9 +226,12 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
         average_list = []
         orders_completed = Order.objects.filter(status='Completed')
 
+        # Find all regions of completed orders
         for order in orders_completed:
             list_of_all_regions.append(order.region)
         list_of_all_regions = list(set(list_of_all_regions))
+
+        # Find min of average delivery times
         for region in list_of_all_regions:
             orders_completed_region = Order.objects.filter(status='Completed', region=region)
             for order in orders_completed_region:
@@ -240,8 +242,19 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
             average_list.append(sum(list_of_delivery_times) / len(orders_completed_region))
         average_min = min(average_list)
 
-        rate = (60*60 - min(average_min, 60*60)) / (60*60) * 5
-        earn = 0
+        rate = (60 * 60 - min(average_min, 60 * 60)) / (60 * 60) * 5
+
+        # Find earning of courier
+        number_of_completed_orders = len(Courier.objects.filter(courier_id=pk)[0].completed_orders)
+        courier_type = Courier.objects.filter(courier_id=pk)[0].courier_type
+        if courier_type == 'foot':
+            coefficient = 2
+        if courier_type == 'bike':
+            coefficient = 5
+        if courier_type == 'car':
+            coefficient = 9
+
+        earn = number_of_completed_orders * 500 * coefficient
 
         # creating serializer data
         courier_object = self.get_object()
@@ -251,7 +264,8 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
 
         # Updating data
         value = serializer.data
-        value.update({'rating': rate})
+        if Courier.objects.filter(courier_id=pk)[0].completed_orders:
+            value.update({'rating': rate})
         value.update({'earnings': earn})
         Courier.objects.filter(courier_id=pk).update(rating=rate, earnings=earn)
 
@@ -482,7 +496,7 @@ class OrderCompleteView(generics.CreateAPIView):
                 if order_id in list_order_id_delivery:
                     list_order_id_delivery.remove(order_id)
                 completed_orders.append(order_id)
-                Order.objects.filter(order_id=order_id).update(status='Completed', complete_time=f'{complete_time}',)
+                Order.objects.filter(order_id=order_id).update(status='Completed', complete_time=f'{complete_time}', )
                 Courier.objects.filter(courier_id=courier_id).update(order_id_delivery=list_order_id_delivery,
                                                                      completed_orders=completed_orders)
                 # preparing data for output

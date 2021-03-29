@@ -11,7 +11,7 @@ class Courier(models.Model):
     earnings = models.PositiveSmallIntegerField(blank=True, null=True, default=0)
     order_id_delivery = ArrayField(models.IntegerField(blank=True, null=True), blank=True, null=True)
     completed_orders = ArrayField(models.PositiveIntegerField(blank=True, null=True), blank=True, null=True,
-                                  default=[])
+                                  default=list)
 
 
 class Order(models.Model):
