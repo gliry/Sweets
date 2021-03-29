@@ -53,6 +53,7 @@ class CourierCreateView(generics.CreateAPIView):
             del ser.data[i]['rating']
             del ser.data[i]['earnings']
             del ser.data[i]['order_id_delivery']
+            del ser.data[i]['completed_orders']
             ser.data[i]['id'] = ser.data[i].pop('courier_id')
 
         # preparing data for output
@@ -472,6 +473,7 @@ class OrderCompleteView(generics.CreateAPIView):
         courier_id = request.data['courier_id']
         order_id = request.data['order_id']
         complete_time = request.data['complete_time']
+        completed_orders = Courier.objects.filter(courier_id=courier_id)[0].completed_orders
         list_order_id_delivery = Courier.objects.filter(courier_id=courier_id)[0].order_id_delivery
 
         # Making status of order completed
@@ -479,8 +481,10 @@ class OrderCompleteView(generics.CreateAPIView):
             if Order.objects.filter(courier_id_delivery=courier_id):
                 if order_id in list_order_id_delivery:
                     list_order_id_delivery.remove(order_id)
+                completed_orders.append(order_id)
                 Order.objects.filter(order_id=order_id).update(status='Completed', complete_time=f'{complete_time}',)
-                Courier.objects.filter(courier_id=courier_id).update(order_id_delivery=list_order_id_delivery)
+                Courier.objects.filter(courier_id=courier_id).update(order_id_delivery=list_order_id_delivery,
+                                                                     completed_orders=completed_orders)
                 # preparing data for output
                 data = {
                     "order_id": order_id
