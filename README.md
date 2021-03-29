@@ -24,8 +24,11 @@
 	sudo apt install libpq-dev
 	sudo apt install net-tools
 	sudo apt install git
+	sudo apt install gunicorn
 	pip3 install psycopg2
 	pip3 install -r requirements.txt
+	pip3 install gunicorn
+	pip3 install psycopg2-binary
 
 5)Настроим базу данных:
 	sudo so - postgres
@@ -44,5 +47,7 @@
 
 8) Запустить сервер 
 	python3 manage.py runserver 0.0.0.0:8080
+Или:
+	gunicorn --bind 0.0.0.0:8080 sweet.wsgi
 	
 	
