@@ -49,5 +49,6 @@
 	python3 manage.py runserver 0.0.0.0:8080
 Или:
 	gunicorn --bind 0.0.0.0:8080 sweet.wsgi
+	(последнее предпочтительнее)
 	
 	
