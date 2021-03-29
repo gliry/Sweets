@@ -221,8 +221,26 @@ class CourierDetailView(generics.RetrieveDestroyAPIView, generics.ListAPIView):
         :param kwargs: unpacking named arguments
         :return: courier's parameters with two additional params: rating and earnings.
         """
-        rate = 0  # Need to fix by writing formula
-        earn = 0  # Need to fix by writing formula
+        list_of_all_regions = []
+        list_of_delivery_times = []
+        average_list = []
+        orders_completed = Order.objects.filter(status='Completed')
+
+        for order in orders_completed:
+            list_of_all_regions.append(order.region)
+        list_of_all_regions = list(set(list_of_all_regions))
+        for region in list_of_all_regions:
+            orders_completed_region = Order.objects.filter(status='Completed', region=region)
+            for order in orders_completed_region:
+                complete_time = datetime.datetime.strptime(order.complete_time[:-1], '%Y-%m-%dT%H:%M:%S.%f')
+                assign_time = datetime.datetime.strptime(order.assign_time[:-1], '%Y-%m-%dT%H:%M:%S.%f')
+                delivery_time_seconds = (complete_time - assign_time).total_seconds()
+                list_of_delivery_times.append(delivery_time_seconds)
+            average_list.append(sum(list_of_delivery_times) / len(orders_completed_region))
+        average_min = min(average_list)
+
+        rate = (60*60 - min(average_min, 60*60)) / (60*60) * 5
+        earn = 0
 
         # creating serializer data
         courier_object = self.get_object()
